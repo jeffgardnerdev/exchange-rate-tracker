@@ -807,35 +807,30 @@
     }
 
     async function fetchHistoryData() {
-      // Wise returns hourly data for ranges up to ~30 days, daily beyond that
+      // Wise's /v1/rates endpoint caps query windows; we chunk into 30-day slices
+      // and always request group=hour so we can pick the latest-hour rate per day.
       const CHUNK_DAYS = 30;
       const TOTAL_DAYS = 180;
       const totalChunks = Math.ceil(TOTAL_DAYS / CHUNK_DAYS);
-      const allHourly = [];
       const emptyEl = document.getElementById("emptyState");
-      let chunkNum = 0;
+      const now = new Date();
 
-      for (let offset = 0; offset < TOTAL_DAYS; offset += CHUNK_DAYS) {
-        chunkNum++;
-        if (emptyEl) {
-          emptyEl.textContent = `Fetching hourly rates… (${chunkNum}/${totalChunks})`;
-        }
+      if (emptyEl) emptyEl.textContent = `Fetching hourly rates… (0/${totalChunks})`;
+
+      // Build all chunk requests up front, then fetch in parallel
+      const chunkRequests = Array.from({ length: totalChunks }, (_, i) => {
+        const offset = i * CHUNK_DAYS;
         const chunkTo = new Date(now);
         chunkTo.setDate(chunkTo.getDate() - offset);
         const chunkFrom = new Date(now);
         chunkFrom.setDate(chunkFrom.getDate() - Math.min(offset + CHUNK_DAYS, TOTAL_DAYS));
-
         const fromStr = chunkFrom.toISOString().slice(0, 19) + "+00:00";
         const toStr = chunkTo.toISOString().slice(0, 19) + "+00:00";
+        return wiseGet(`/v1/rates?source=USD&target=BRL&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&group=hour`);
+      });
 
-        const data = await wiseGet(
-          `/v1/rates?source=USD&target=BRL&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&group=hour`
-        );
-
-        if (data && data.length > 0) {
-          allHourly.push(...data);
-        }
-      }
+      const chunks = await Promise.all(chunkRequests);
+      const allHourly = chunks.flatMap(data => data ?? []);
 
       if (allHourly.length === 0) throw new Error("No historical data returned");
 
