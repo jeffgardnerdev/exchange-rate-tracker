@@ -3,10 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>USD → BRL Exchange Rate Tracker (Wise)</title>
+  <title>USD → BRL Exchange Rate Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent: #9fe870;
+      --accent-tint: rgba(159,232,112,0.12);
+      --accent-tint-soft: rgba(159,232,112,0.1);
+      --accent-on: #0e0f0c;
+    }
+
+    body.source-visa {
+      /* Brighter Visa-family blue (#1A1F71 is too dark on the dark bg —
+         only 1.4:1 contrast; #4096FF gets ~6.6:1, passes WCAG AAA) */
+      --accent: #4096FF;
+      --accent-tint: rgba(64,150,255,0.18);
+      --accent-tint-soft: rgba(64,150,255,0.14);
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -21,19 +36,54 @@
 
     header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
 
     header h1 {
       font-size: 1.8rem;
       font-weight: 700;
-      color: #9fe870;
+      color: var(--accent);
     }
 
     header p {
       color: #8a8a8a;
       margin-top: 0.25rem;
       font-size: 0.9rem;
+    }
+
+    /* Source switcher */
+    .source-switcher {
+      display: inline-flex;
+      gap: 0;
+      margin-top: 1rem;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #3a3b38;
+    }
+
+    .source-btn {
+      background: none;
+      border: none;
+      padding: 0.4rem 1.4rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #8a8a8a;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .source-btn + .source-btn {
+      border-left: 1px solid #3a3b38;
+    }
+
+    .source-btn.active {
+      background: var(--accent);
+      color: var(--accent-on);
+    }
+
+    .source-btn:not(.active):hover {
+      background: #2a2b28;
+      color: #e0e0e0;
     }
 
     .card {
@@ -51,7 +101,7 @@
       text-align: center;
     }
 
-    .api-key-section label {
+    .api-key-section label:not(.env-label) {
       display: block;
       font-size: 0.85rem;
       color: #8a8a8a;
@@ -67,6 +117,10 @@
       margin: 0 auto;
     }
 
+    .api-key-row + .api-key-row {
+      margin-top: 0.5rem;
+    }
+
     .api-key-row input {
       flex: 1;
       padding: 0.6rem 0.8rem;
@@ -80,12 +134,33 @@
       transition: border-color 0.15s;
     }
 
-    .api-key-row input:focus { border-color: #9fe870; }
+    .api-key-row input:focus { border-color: var(--accent); }
 
     .api-key-hint {
       font-size: 0.75rem;
       color: #6b6b6b;
       margin-top: 0.5rem;
+    }
+
+    /* Visa env toggle */
+    .visa-env-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+      color: #8a8a8a;
+    }
+
+    .env-label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+    }
+
+    .env-label input[type="radio"] {
+      accent-color: var(--accent);
     }
 
     /* Rate display */
@@ -104,7 +179,7 @@
     .rate-display .rate {
       font-size: 2.8rem;
       font-weight: 700;
-      color: #9fe870;
+      color: var(--accent);
     }
 
     .rate-display .rate.error {
@@ -167,7 +242,7 @@
       transition: border-color 0.15s, color 0.15s;
     }
 
-    .secondary-btn:hover { border-color: #9fe870; color: #9fe870; }
+    .secondary-btn:hover { border-color: var(--accent); color: var(--accent); }
     .secondary-btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
     .ellipsis-btn {
@@ -187,7 +262,7 @@
       transition: border-color 0.15s, color 0.15s;
     }
 
-    .ellipsis-btn:hover { border-color: #9fe870; color: #9fe870; }
+    .ellipsis-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     .dropdown-menu {
       display: none;
@@ -248,8 +323,8 @@
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      background: #9fe870;
-      color: #0e0f0c;
+      background: var(--accent);
+      color: var(--accent-on);
       border: none;
       border-radius: 8px;
       padding: 0.6rem 1.2rem;
@@ -287,8 +362,8 @@
     .chart-tab:hover { color: #e0e0e0; }
 
     .chart-tab.active {
-      color: #9fe870;
-      border-bottom-color: #9fe870;
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
     .chart-container {
@@ -322,22 +397,46 @@
 
   <header>
     <h1>USD → BRL Exchange Rate</h1>
-    <p>Mid-market rate via Wise API</p>
+    <p id="headerSubtitle">Mid-market rate via Wise API</p>
+    <div class="source-switcher">
+      <button class="source-btn" id="btnWise" onclick="switchSource('wise')">Wise</button>
+      <button class="source-btn" id="btnVisa" onclick="switchSource('visa')">Visa</button>
+    </div>
   </header>
 
-  <!-- API Key Card (only shown when no key) -->
+  <!-- API Key Card (only shown when no credentials) -->
   <div class="card api-key-section" id="apiKeyCard">
-    <label for="apiKeyField">Wise API Token</label>
-    <div class="api-key-row">
-      <input type="password" id="apiKeyField" placeholder="Enter your Wise API token…">
-      <button class="btn" onclick="saveApiKey()">Save</button>
+    <!-- Wise credentials -->
+    <div id="wiseCredSection">
+      <label for="apiKeyField">Wise API Token</label>
+      <div class="api-key-row">
+        <input type="password" id="apiKeyField" placeholder="Enter your Wise API token…">
+        <button class="btn" onclick="saveApiKey()">Save</button>
+      </div>
+      <p class="api-key-hint">Your token is stored only in this browser's local storage.</p>
     </div>
-    <p class="api-key-hint">Your token is stored only in this browser's local storage.</p>
+
+    <!-- Visa credentials -->
+    <div id="visaCredSection" class="hidden">
+      <label>Visa Developer Credentials</label>
+      <div class="visa-env-toggle">
+        <label class="env-label"><input type="radio" name="visaEnv" value="sandbox" checked> Sandbox</label>
+        <label class="env-label"><input type="radio" name="visaEnv" value="production"> Production</label>
+      </div>
+      <div class="api-key-row">
+        <input type="text" id="visaKeyField" placeholder="API Key…">
+      </div>
+      <div class="api-key-row">
+        <input type="password" id="visaSecretField" placeholder="Shared Secret…">
+        <button class="btn" onclick="saveVisaCredentials()">Save</button>
+      </div>
+      <p class="api-key-hint">Credentials stored in this browser's local storage. Sandbox returns synthetic/canned rates.</p>
+    </div>
   </div>
 
   <!-- Current Rate Card -->
   <div class="card rate-display hidden" id="rateCard">
-    <div class="label">Wise Mid-market Rate</div>
+    <div class="label" id="rateLabel">Wise Mid-market Rate</div>
     <div class="rate-row">
       <div class="rate" id="currentRate">Loading…</div>
       <span class="pct-change hidden" id="pctChange" title="Compared to previous trading day's closing rate"></span>
@@ -348,12 +447,12 @@
       <button class="ellipsis-btn" id="menuBtn" onclick="toggleMenu()">&hellip;</button>
       <div class="dropdown-menu" id="dropdownMenu">
         <button class="dropdown-item" id="refreshHistoryBtn" onclick="refreshHistory(); closeMenu();">Refresh history</button>
-        <button class="dropdown-item" onclick="changeApiKey(); closeMenu();">Change API token</button>
+        <button class="dropdown-item" id="changeCredsBtn" onclick="changeCredentials(); closeMenu();">Change credentials</button>
       </div>
     </div>
   </div>
 
-  <!-- Backfill Card -->
+  <!-- Backfill Card (Wise only) -->
   <div class="card backfill-section hidden" id="backfillSection">
     <span class="hint">Fetch ~180 days of daily mid-market rates from Wise</span>
     <button class="btn" id="backfillBtn" onclick="backfill()">Backfill 6 Months</button>
@@ -376,16 +475,49 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "wiseExchangeRateHistory";
-    const API_KEY_STORAGE = "wiseApiToken";
-    const WISE_API = "https://api.wise.com";
+    // ── Storage keys ───────────────────────────────────────────
+    const SOURCE_KEY          = "activeSource";
+    const WISE_STORAGE_KEY    = "wiseExchangeRateHistory";
+    const VISA_STORAGE_KEY    = "visaExchangeRateHistory";
+    const WISE_API_KEY        = "wiseApiToken";
+    const VISA_API_KEY        = "visaApiKey";
+    const VISA_SECRET_KEY     = "visaSharedSecret";
+    const VISA_ENV_KEY        = "visaEnv";
+
+    const WISE_API  = "https://api.wise.com";
     const REFRESH_MS = 60_000;
 
     let refreshTimer = null;
     let activeTab = "intraday";
     let lastLiveRate = null;
 
-    // ── Dropdown menu ──────────────────────────────────────
+    // ── Source helpers ─────────────────────────────────────────
+
+    function getActiveSource() {
+      return localStorage.getItem(SOURCE_KEY) || "wise";
+    }
+
+    function setActiveSource(s) {
+      localStorage.setItem(SOURCE_KEY, s);
+    }
+
+    function getStorageKey() {
+      return getActiveSource() === "wise" ? WISE_STORAGE_KEY : VISA_STORAGE_KEY;
+    }
+
+    function switchSource(src) {
+      setActiveSource(src);
+      if (dailyChart)    { dailyChart.destroy();    dailyChart    = null; }
+      if (intradayChart) { intradayChart.destroy(); intradayChart = null; }
+      intradayData = new Map();
+      lastLiveRate = null;
+      stopAutoRefresh();
+      renderApiKeyState();
+      const hasKey = src === "wise" ? !!getWiseApiKey() : hasVisaCredentials();
+      if (hasKey) initApp();
+    }
+
+    // ── Dropdown menu ──────────────────────────────────────────
 
     function toggleMenu() {
       document.getElementById("dropdownMenu").classList.toggle("open");
@@ -397,59 +529,129 @@
 
     document.addEventListener("click", (e) => {
       const menu = document.getElementById("dropdownMenu");
-      const btn = document.getElementById("menuBtn");
-      if (!menu.contains(e.target) && e.target !== btn) {
-        closeMenu();
-      }
+      const btn  = document.getElementById("menuBtn");
+      if (!menu.contains(e.target) && e.target !== btn) closeMenu();
     });
+
+    // ── Theme helpers ─────────────────────────────────────────
+
+    function getAccentColor() {
+      return getComputedStyle(document.body).getPropertyValue("--accent").trim();
+    }
+
+    function getAccentTint() {
+      return getComputedStyle(document.body).getPropertyValue("--accent-tint-soft").trim();
+    }
 
     // ── Formatting helpers ────────────────────────────────────
 
-    // Wise returns "+0000" (no colon) which some browsers can't parse.
-    // Normalize to "+00:00" for reliable Date parsing.
     function parseWiseTime(timeStr) {
       return new Date(timeStr.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
     }
 
-    function utcToLocal(timeStr) {
-      return parseWiseTime(timeStr).toLocaleString();
+    function utcToLocal(timeStr)     { return parseWiseTime(timeStr).toLocaleString(); }
+    function utcToLocalDate(timeStr) { return parseWiseTime(timeStr).toLocaleDateString(); }
+    function utcToLocalTime(timeStr) { return parseWiseTime(timeStr).toLocaleTimeString(); }
+
+    // ── Credential helpers ────────────────────────────────────
+
+    function getStoredValue(key, fallback = "") {
+      return localStorage.getItem(key) || fallback;
     }
 
-    function utcToLocalDate(timeStr) {
-      return parseWiseTime(timeStr).toLocaleDateString();
-    }
-
-    function utcToLocalTime(timeStr) {
-      return parseWiseTime(timeStr).toLocaleTimeString();
-    }
-
-    // ── API Key helpers ──────────────────────────────────────
-
-    function getApiKey() {
-      return localStorage.getItem(API_KEY_STORAGE) || "";
-    }
+    function getWiseApiKey()    { return getStoredValue(WISE_API_KEY); }
+    function getVisaApiKey()    { return getStoredValue(VISA_API_KEY); }
+    function getVisaSecret()    { return getStoredValue(VISA_SECRET_KEY); }
+    function getVisaEnv()       { return getStoredValue(VISA_ENV_KEY, "sandbox"); }
+    function hasVisaCredentials() { return !!(getVisaApiKey() && getVisaSecret()); }
 
     function saveApiKey() {
       const input = document.getElementById("apiKeyField");
       const key = input.value.trim();
       if (!key) return;
-      localStorage.setItem(API_KEY_STORAGE, key);
+      localStorage.setItem(WISE_API_KEY, key);
       input.value = "";
       renderApiKeyState();
       initApp();
     }
 
-    function changeApiKey() {
-      localStorage.removeItem(API_KEY_STORAGE);
+    function changeWiseCredentials() {
+      localStorage.removeItem(WISE_API_KEY);
       stopAutoRefresh();
       renderApiKeyState();
     }
 
+    function saveVisaCredentials() {
+      const key    = document.getElementById("visaKeyField").value.trim();
+      const secret = document.getElementById("visaSecretField").value.trim();
+      const env    = document.querySelector('input[name="visaEnv"]:checked')?.value || "sandbox";
+      if (!key || !secret) return;
+      localStorage.setItem(VISA_API_KEY, key);
+      localStorage.setItem(VISA_SECRET_KEY, secret);
+      localStorage.setItem(VISA_ENV_KEY, env);
+      document.getElementById("visaKeyField").value  = "";
+      document.getElementById("visaSecretField").value = "";
+      renderApiKeyState();
+      initApp();
+    }
+
+    function changeVisaCredentials() {
+      localStorage.removeItem(VISA_API_KEY);
+      localStorage.removeItem(VISA_SECRET_KEY);
+      _cachedCryptoKey = null;
+      _cachedKeySecret = null;
+      stopAutoRefresh();
+      renderApiKeyState();
+    }
+
+    function changeCredentials() {
+      if (getActiveSource() === "wise") changeWiseCredentials();
+      else changeVisaCredentials();
+    }
+
+    // ── Render state ──────────────────────────────────────────
+
     function renderApiKeyState() {
-      const hasKey = !!getApiKey();
+      const src = getActiveSource();
+
+      // Theme (accent color follows source)
+      document.body.classList.toggle("source-visa", src === "visa");
+
+      // Source switcher button state
+      document.getElementById("btnWise").classList.toggle("active", src === "wise");
+      document.getElementById("btnVisa").classList.toggle("active", src === "visa");
+
+      // Header / labels
+      document.getElementById("headerSubtitle").textContent =
+        src === "wise" ? "Mid-market rate via Wise API" : "Exchange rate via Visa API";
+      document.getElementById("rateLabel").textContent =
+        src === "wise" ? "Wise Mid-market Rate" : "Visa Exchange Rate";
+      document.getElementById("changeCredsBtn").textContent =
+        src === "wise" ? "Change Wise token" : "Change Visa credentials";
+
+      const hasKey = src === "wise" ? !!getWiseApiKey() : hasVisaCredentials();
+
+      // Show correct credential section
+      document.getElementById("wiseCredSection").classList.toggle("hidden", src !== "wise");
+      document.getElementById("visaCredSection").classList.toggle("hidden", src !== "visa");
+
+      // Pre-fill Visa env radio if saved
+      if (src === "visa") {
+        const savedEnv = getVisaEnv();
+        const radio = document.querySelector(`input[name="visaEnv"][value="${savedEnv}"]`);
+        if (radio) radio.checked = true;
+      }
+
       document.getElementById("apiKeyCard").classList.toggle("hidden", hasKey);
       document.getElementById("rateCard").classList.toggle("hidden", !hasKey);
       document.getElementById("chartCard").classList.toggle("hidden", !hasKey);
+
+      // Intraday tab visible for Wise only
+      document.getElementById("tabIntraday").classList.toggle("hidden", src !== "wise");
+
+      // If on intraday tab but switched to Visa, fall back to history tab
+      if (src === "visa" && activeTab === "intraday") switchTab("daily");
+
       if (!hasKey) {
         document.getElementById("backfillSection").classList.add("hidden");
       }
@@ -459,14 +661,14 @@
 
     function loadHistory() {
       try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        return JSON.parse(localStorage.getItem(getStorageKey())) || [];
       } catch {
         return [];
       }
     }
 
     function saveHistory(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(getStorageKey(), JSON.stringify(data));
     }
 
     function mergeInto(existing, incoming) {
@@ -487,9 +689,7 @@
       document.getElementById("tabIntraday").classList.toggle("active", tab === "intraday");
       document.getElementById("dailyChartWrap").classList.toggle("hidden", tab !== "daily");
       document.getElementById("intradayChartWrap").classList.toggle("hidden", tab !== "intraday");
-      if (tab === "intraday") {
-        fetchIntradayData();
-      }
+      if (tab === "intraday") fetchIntradayData();
     }
 
     // ── Daily Chart ───────────────────────────────────────────
@@ -497,19 +697,28 @@
     let dailyChart = null;
 
     function renderDailyChart() {
+      const src = getActiveSource();
       const history = loadHistory();
       const emptyEl = document.getElementById("emptyState");
       const backfillEl = document.getElementById("backfillSection");
 
       if (history.length === 0) {
         emptyEl.style.display = "flex";
-        if (getApiKey()) backfillEl.classList.remove("hidden");
+        emptyEl.textContent = src === "wise"
+          ? "No history yet — data accumulates automatically or click Backfill"
+          : "No history yet — data accumulates automatically as you fetch rates";
+        // Backfill only available for Wise
+        if (src === "wise" && getWiseApiKey()) backfillEl.classList.remove("hidden");
         if (dailyChart) { dailyChart.destroy(); dailyChart = null; }
         return;
       }
 
       emptyEl.style.display = "none";
       backfillEl.classList.add("hidden");
+
+      const datasetLabel = src === "wise"
+        ? "USD → BRL (Wise Mid-market)"
+        : "USD → BRL (Visa)";
 
       const labels = history.map(h => {
         const d = new Date(h.date + "T00:00:00");
@@ -520,6 +729,7 @@
       if (dailyChart) {
         dailyChart.data.labels = labels;
         dailyChart.data.datasets[0].data = data;
+        dailyChart.data.datasets[0].label = datasetLabel;
         dailyChart.update();
         return;
       }
@@ -529,10 +739,10 @@
         data: {
           labels,
           datasets: [{
-            label: "USD → BRL (Wise Mid-market)",
+            label: datasetLabel,
             data,
-            borderColor: "#9fe870",
-            backgroundColor: "rgba(159,232,112,0.1)",
+            borderColor: getAccentColor(),
+            backgroundColor: getAccentTint(),
             fill: true,
             tension: 0.3,
             pointRadius: history.length > 60 ? 0 : 3,
@@ -548,10 +758,7 @@
             legend: { display: false },
             tooltip: {
               callbacks: {
-                title: (items) => {
-                  const idx = items[0].dataIndex;
-                  return loadHistory()[idx]?.date ?? "";
-                },
+                title: (items) => history[items[0].dataIndex]?.date ?? "",
                 label: (item) => `1 USD = ${item.parsed.y.toFixed(4)} BRL`
               }
             }
@@ -574,13 +781,21 @@
       });
     }
 
-    // ── Intraday Chart ────────────────────────────────────────
+    // ── Intraday Chart (Wise only) ────────────────────────────
 
     let intradayChart = null;
     let intradayData = new Map();
 
     async function fetchIntradayData() {
       const emptyEl = document.getElementById("intradayEmpty");
+
+      if (getActiveSource() !== "wise") {
+        emptyEl.textContent = "Intraday data is not available via the Visa FX Rates API.";
+        emptyEl.style.display = "flex";
+        if (intradayChart) { intradayChart.destroy(); intradayChart = null; }
+        return;
+      }
+
       emptyEl.textContent = "Loading intraday data…";
       emptyEl.style.display = "flex";
 
@@ -588,7 +803,7 @@
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0);
         const fromStr = startOfDay.toISOString().slice(0, 19) + "+00:00";
-        const toStr = now.toISOString().slice(0, 19) + "+00:00";
+        const toStr   = now.toISOString().slice(0, 19) + "+00:00";
 
         const data = await wiseGet(
           `/v1/rates?source=USD&target=BRL&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&group=minute`
@@ -601,7 +816,6 @@
           return;
         }
 
-        // Index by HH:MM label
         const byMinute = new Map();
         for (const entry of data) {
           const d = parseWiseTime(entry.time);
@@ -609,7 +823,6 @@
           byMinute.set(key, entry.rate);
         }
 
-        // Inject current live rate at the current minute so the chart stays up to date
         if (lastLiveRate !== null) {
           const nowLabel = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
           byMinute.set(nowLabel, lastLiveRate);
@@ -636,22 +849,19 @@
 
       emptyEl.style.display = "none";
 
-      // Build full 9:00 AM – 5:00 PM timeline
       const today = new Date();
-      const marketOpen = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0);
+      const marketOpen  = new Date(today.getFullYear(), today.getMonth(), today.getDate(),  9, 0);
       const marketClose = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0);
       const timeFmt = { hour: "2-digit", minute: "2-digit" };
 
       const labels = [];
-      const data = [];
-      let lastRate = null;
+      const data   = [];
+      let lastRate  = null;
       const now = new Date();
+
       for (let t = new Date(marketOpen); t <= marketClose; t.setMinutes(t.getMinutes() + 1)) {
         const label = t.toLocaleTimeString([], timeFmt);
-        if (intradayData.has(label)) {
-          lastRate = intradayData.get(label);
-        }
-        // Only include up to current time; stop filling after now
+        if (intradayData.has(label)) lastRate = intradayData.get(label);
         if (t > now && lastRate !== null && !intradayData.has(label)) break;
         labels.push(label);
         data.push(lastRate);
@@ -671,8 +881,8 @@
           datasets: [{
             label: "USD → BRL (Intraday)",
             data,
-            borderColor: "#9fe870",
-            backgroundColor: "rgba(159,232,112,0.1)",
+            borderColor: getAccentColor(),
+            backgroundColor: getAccentTint(),
             fill: true,
             tension: 0.2,
             pointRadius: 0,
@@ -701,7 +911,6 @@
                 font: { size: 11 },
                 color: "#6b6b6b",
                 callback: function(val, idx) {
-                  // Show only on-the-hour labels (every 60 minutes)
                   return idx % 60 === 0 ? this.getLabelForValue(val) : null;
                 },
                 maxRotation: 0,
@@ -726,136 +935,237 @@
 
     async function wiseGet(path) {
       const res = await fetch(`${WISE_API}${path}`, {
-        headers: { "Authorization": `Bearer ${getApiKey()}` }
+        headers: { "Authorization": `Bearer ${getWiseApiKey()}` }
       });
-      if (res.status === 401 || res.status === 403) {
-        throw new Error("Invalid API token");
-      }
+      if (res.status === 401 || res.status === 403) throw new Error("Invalid API token");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     }
 
-    // ── Current rate fetch ────────────────────────────────────
+    // ── Visa API helpers ──────────────────────────────────────
+
+    let _cachedCryptoKey = null;
+    let _cachedKeySecret = null;
+
+    async function getHmacKey(secret) {
+      if (_cachedCryptoKey && _cachedKeySecret === secret) return _cachedCryptoKey;
+      const enc = new TextEncoder();
+      _cachedCryptoKey = await crypto.subtle.importKey(
+        "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      );
+      _cachedKeySecret = secret;
+      return _cachedCryptoKey;
+    }
+
+    async function buildXPayToken(apiKey, secret, path, bodyStr) {
+      const timestamp    = Math.floor(Date.now() / 1000).toString();
+      // resource_path strips the first URL segment per Visa X-Pay-Token spec
+      const resourcePath = path.replace(/^\/[^/]+\//, "");
+      const queryStr     = `apikey=${apiKey}`;
+      const message      = timestamp + resourcePath + queryStr + bodyStr;
+      const enc          = new TextEncoder();
+      const key          = await getHmacKey(secret);
+      const sig          = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+      const hex          = Array.from(new Uint8Array(sig))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+      return `xv2:${timestamp}:${hex}`;
+    }
+
+    async function visaPost(path, bodyObj) {
+      const apiKey = getVisaApiKey();
+      const secret = getVisaSecret();
+      const env    = getVisaEnv();
+      const base   = env === "production" ? "https://api.visa.com" : "https://sandbox.api.visa.com";
+
+      const bodyStr = JSON.stringify(bodyObj);
+      const token   = await buildXPayToken(apiKey, secret, path, bodyStr);
+      const visaUrl = `${base}${path}?apikey=${encodeURIComponent(apiKey)}`;
+
+      // Visa's API does not serve CORS headers — route through our Pages Function.
+      // Token is signed client-side, so the shared secret never leaves the browser.
+      const res = await fetch("/visa-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: visaUrl,
+          headers: { "x-pay-token": token },
+          body: bodyStr,
+        }),
+      });
+
+      if (!res.ok) {
+        let errBody = {};
+        try { errBody = await res.json(); } catch { /* ignore */ }
+        const code = errBody?.responseStatus?.code;
+        if (code === "9159" || code === "9201") {
+          throw new Error("Token validation failed — check your API key and shared secret (no trailing whitespace)");
+        }
+        if (code === "9206") {
+          throw new Error("API key missing from request — check your API key");
+        }
+        const msg = errBody?.responseStatus?.message || res.statusText;
+        throw new Error(`Visa API error ${res.status}: ${msg}`);
+      }
+
+      return res.json();
+    }
+
+    // ── Current rate fetch (dispatches by source) ─────────────
+
+    function displayRate(rate, updatedText) {
+      const el = document.getElementById("currentRate");
+      el.textContent = `1 USD = ${rate.toFixed(4)} BRL`;
+      el.classList.remove("error");
+      document.getElementById("lastUpdated").textContent = updatedText;
+    }
 
     async function fetchCurrentRate() {
-      const el = document.getElementById("currentRate");
-      const updatedEl = document.getElementById("lastUpdated");
+      if (getActiveSource() === "wise") {
+        await fetchWiseCurrentRate();
+      } else {
+        await fetchVisaCurrentRate();
+      }
+    }
 
+    async function fetchWiseCurrentRate() {
       try {
         const data = await wiseGet("/v1/rates?source=USD&target=BRL");
         if (!data || data.length === 0) throw new Error("No rate data returned");
-
-        const entry = data[0];
-        const rate = entry.rate;
-        lastLiveRate = rate;
-        const quoteDate = entry.time.slice(0, 10); // YYYY-MM-DD
-
-        el.textContent = `1 USD = ${rate.toFixed(4)} BRL`;
-        el.classList.remove("error");
-        updatedEl.textContent = `As of: ${utcToLocal(entry.time)} — checked ${new Date().toLocaleTimeString()}`;
-
-        // Show percentage change vs previous day
-        const pctEl = document.getElementById("pctChange");
-        const history = loadHistory();
-        const prevDay = history.filter(h => h.date < quoteDate);
-        if (prevDay.length > 0) {
-          const prevRate = prevDay[prevDay.length - 1].rate;
-          const pct = ((rate - prevRate) / prevRate) * 100;
-          const arrow = pct > 0 ? "\u25B2" : pct < 0 ? "\u25BC" : "";
-          pctEl.textContent = `${arrow} ${Math.abs(pct).toFixed(2)}%`;
-          pctEl.className = `pct-change ${pct > 0 ? "up" : pct < 0 ? "down" : "flat"}`;
-          pctEl.classList.remove("hidden");
-        } else {
-          pctEl.classList.add("hidden");
-        }
-
-        // Store in history (one entry per date)
-        if (history.length > 0) {
-          const map = new Map(history.map(h => [h.date, h.rate]));
-          map.set(quoteDate, rate);
-          const updated = Array.from(map, ([date, r]) => ({ date, rate: r }))
-            .sort((a, b) => a.date.localeCompare(b.date));
-
-          if (JSON.stringify(updated) !== JSON.stringify(history)) {
-            saveHistory(updated);
-            renderDailyChart();
-          }
-        }
+        const entry     = data[0];
+        const rate      = entry.rate;
+        lastLiveRate    = rate;
+        const quoteDate = entry.time.slice(0, 10);
+        displayRate(rate, `As of: ${utcToLocal(entry.time)} — checked ${new Date().toLocaleTimeString()}`);
+        updatePctChange(rate, quoteDate);
+        appendDailySnapshot(quoteDate, rate);
       } catch (err) {
-        el.textContent = `Error: ${err.message}`;
-        el.classList.add("error");
-        updatedEl.textContent = `Failed at ${new Date().toLocaleTimeString()}`;
-        if (err.message === "Invalid API token") {
-          stopAutoRefresh();
-        }
+        showRateError(err, err.message === "Invalid API token");
       }
+    }
+
+    async function fetchVisaCurrentRate() {
+      try {
+        const data = await visaPost("/forexrates/v2/foreignexchangerates", {
+          rateProductCode: "A",
+          destinationCurrencyCode: "986",
+          sourceAmount: "1",
+          sourceCurrencyCode: "840",
+        });
+        const rate = parseFloat(data.conversionRate);
+        if (isNaN(rate)) throw new Error("Unexpected response format from Visa API");
+        lastLiveRate   = rate;
+        const today    = new Date().toISOString().slice(0, 10);
+        const envLabel = getVisaEnv() === "sandbox" ? "sandbox — synthetic rate" : "production";
+        displayRate(rate, `Visa FX (${envLabel}) — checked ${new Date().toLocaleTimeString()}`);
+        updatePctChange(rate, today);
+        appendDailySnapshot(today, rate);
+      } catch (err) {
+        showRateError(err, false);
+      }
+    }
+
+    function updatePctChange(rate, quoteDate) {
+      const pctEl  = document.getElementById("pctChange");
+      const history = loadHistory();
+      const prevDay = history.filter(h => h.date < quoteDate);
+      if (prevDay.length > 0) {
+        const prevRate = prevDay[prevDay.length - 1].rate;
+        const pct  = ((rate - prevRate) / prevRate) * 100;
+        const arrow = pct > 0 ? "▲" : pct < 0 ? "▼" : "";
+        pctEl.textContent = `${arrow} ${Math.abs(pct).toFixed(2)}%`;
+        pctEl.className   = `pct-change ${pct > 0 ? "up" : pct < 0 ? "down" : "flat"}`;
+        pctEl.classList.remove("hidden");
+      } else {
+        pctEl.classList.add("hidden");
+      }
+    }
+
+    function appendDailySnapshot(date, rate) {
+      const history = loadHistory();
+      const existing = history.find(h => h.date === date);
+      if (existing && existing.rate === rate) return;
+      const map = new Map(history.map(h => [h.date, h.rate]));
+      map.set(date, rate);
+      const updated = Array.from(map, ([d, r]) => ({ date: d, rate: r }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      saveHistory(updated);
+      renderDailyChart();
+    }
+
+    function showRateError(err, isAuthError) {
+      const el        = document.getElementById("currentRate");
+      const updatedEl = document.getElementById("lastUpdated");
+      el.textContent  = `Error: ${err.message}`;
+      el.classList.add("error");
+      updatedEl.textContent = `Failed at ${new Date().toLocaleTimeString()}`;
+      if (isAuthError) stopAutoRefresh();
     }
 
     // ── Manual refresh ─────────────────────────────────────────
 
     async function manualRefresh() {
       const btn = document.getElementById("refreshBtn");
-      const el = document.getElementById("currentRate");
-      btn.disabled = true;
+      const el  = document.getElementById("currentRate");
+      btn.disabled  = true;
       el.textContent = "Refreshing…";
       el.classList.remove("error");
       await fetchCurrentRate();
-      if (activeTab === "intraday") {
+      if (activeTab === "intraday" && getActiveSource() === "wise") {
         await fetchIntradayData();
       }
       btn.disabled = false;
     }
 
+    // ── History helpers ────────────────────────────────────────
+
     async function fetchHistoryData() {
-      // Wise's /v1/rates endpoint caps query windows; we chunk into 30-day slices
-      // and always request group=hour so we can pick the latest-hour rate per day.
-      const CHUNK_DAYS = 30;
-      const TOTAL_DAYS = 180;
+      const CHUNK_DAYS  = 30;
+      const TOTAL_DAYS  = 180;
       const totalChunks = Math.ceil(TOTAL_DAYS / CHUNK_DAYS);
-      const emptyEl = document.getElementById("emptyState");
-      const now = new Date();
+      const emptyEl     = document.getElementById("emptyState");
+      const now         = new Date();
 
       if (emptyEl) emptyEl.textContent = `Fetching hourly rates… (0/${totalChunks})`;
 
-      // Build all chunk requests up front, then fetch in parallel
       const chunkRequests = Array.from({ length: totalChunks }, (_, i) => {
-        const offset = i * CHUNK_DAYS;
-        const chunkTo = new Date(now);
+        const offset   = i * CHUNK_DAYS;
+        const chunkTo  = new Date(now);
         chunkTo.setDate(chunkTo.getDate() - offset);
         const chunkFrom = new Date(now);
         chunkFrom.setDate(chunkFrom.getDate() - Math.min(offset + CHUNK_DAYS, TOTAL_DAYS));
         const fromStr = chunkFrom.toISOString().slice(0, 19) + "+00:00";
-        const toStr = chunkTo.toISOString().slice(0, 19) + "+00:00";
+        const toStr   = chunkTo.toISOString().slice(0, 19) + "+00:00";
         return wiseGet(`/v1/rates?source=USD&target=BRL&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&group=hour`);
       });
 
-      const chunks = await Promise.all(chunkRequests);
-      const allHourly = chunks.flatMap(data => data ?? []);
-
+      const chunks     = await Promise.all(chunkRequests);
+      const allHourly  = chunks.flatMap(data => data ?? []);
       if (allHourly.length === 0) throw new Error("No historical data returned");
 
-      // For each date, keep the rate from the latest hour (closing proxy)
       const byDate = new Map();
       for (const entry of allHourly) {
         const date = entry.time.slice(0, 10);
         const prev = byDate.get(date);
-        if (!prev || entry.time > prev.time) {
-          byDate.set(date, { time: entry.time, rate: entry.rate });
-        }
+        if (!prev || entry.time > prev.time) byDate.set(date, { time: entry.time, rate: entry.rate });
       }
-
       return Array.from(byDate, ([date, { rate }]) => ({ date, rate }));
     }
 
     async function refreshHistory() {
-      // Switch to History tab and show loading state
+      if (getActiveSource() !== "wise") {
+        const emptyEl = document.getElementById("emptyState");
+        switchTab("daily");
+        emptyEl.textContent = "Visa API does not provide historical rate data. History accumulates as you fetch the current rate.";
+        emptyEl.style.display = "flex";
+        return;
+      }
+
       switchTab("daily");
       const emptyEl = document.getElementById("emptyState");
       if (dailyChart) { dailyChart.destroy(); dailyChart = null; }
       emptyEl.textContent = "Refreshing history…";
       emptyEl.style.display = "flex";
-
-      // Clear existing history
       saveHistory([]);
 
       try {
@@ -868,27 +1178,24 @@
       }
     }
 
-    // ── Backfill ──────────────────────────────────────────────
+    // ── Backfill (Wise only) ──────────────────────────────────
 
     async function backfill() {
-      const btn = document.getElementById("backfillBtn");
+      const btn    = document.getElementById("backfillBtn");
       btn.disabled = true;
       btn.textContent = "Fetching…";
 
       try {
         const incoming = await fetchHistoryData();
-        const merged = mergeInto(loadHistory(), incoming);
+        const merged   = mergeInto(loadHistory(), incoming);
         saveHistory(merged);
         renderDailyChart();
 
         btn.textContent = `Backfilled ${incoming.length} days`;
-        setTimeout(() => {
-          btn.textContent = "Backfill 6 Months";
-          btn.disabled = false;
-        }, 3000);
+        setTimeout(() => { btn.textContent = "Backfill 6 Months"; btn.disabled = false; }, 3000);
       } catch (err) {
         btn.textContent = "Backfill failed";
-        btn.disabled = false;
+        btn.disabled    = false;
         console.error("Backfill error:", err);
         setTimeout(() => { btn.textContent = "Backfill 6 Months"; }, 3000);
       }
@@ -900,17 +1207,14 @@
       stopAutoRefresh();
       refreshTimer = setInterval(async () => {
         await fetchCurrentRate();
-        if (activeTab === "intraday") {
+        if (activeTab === "intraday" && getActiveSource() === "wise") {
           await fetchIntradayData();
         }
       }, REFRESH_MS);
     }
 
     function stopAutoRefresh() {
-      if (refreshTimer) {
-        clearInterval(refreshTimer);
-        refreshTimer = null;
-      }
+      if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     }
 
     // ── Init ──────────────────────────────────────────────────
@@ -918,17 +1222,18 @@
     function initApp() {
       renderDailyChart();
       fetchCurrentRate();
-      fetchIntradayData();
+      if (getActiveSource() === "wise") fetchIntradayData();
       startAutoRefresh();
     }
 
-    // Allow saving with Enter key
+    // Allow saving Wise key with Enter
     document.getElementById("apiKeyField").addEventListener("keydown", (e) => {
       if (e.key === "Enter") saveApiKey();
     });
 
     renderApiKeyState();
-    if (getApiKey()) {
+    const src = getActiveSource();
+    if ((src === "wise" && getWiseApiKey()) || (src === "visa" && hasVisaCredentials())) {
       initApp();
     }
   </script>
