@@ -16,10 +16,11 @@
     }
 
     body.source-visa {
-      --accent: #1A1F71;
-      --accent-tint: rgba(26,31,113,0.18);
-      --accent-tint-soft: rgba(26,31,113,0.14);
-      --accent-on: #ffffff;
+      /* Brighter Visa-family blue (#1A1F71 is too dark on the dark bg —
+         only 1.4:1 contrast; #4096FF gets ~6.6:1, passes WCAG AAA) */
+      --accent: #4096FF;
+      --accent-tint: rgba(64,150,255,0.18);
+      --accent-tint-soft: rgba(64,150,255,0.14);
     }
 
     body {
