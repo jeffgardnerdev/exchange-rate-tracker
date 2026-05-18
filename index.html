@@ -8,6 +8,20 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --accent: #9fe870;
+      --accent-tint: rgba(159,232,112,0.12);
+      --accent-tint-soft: rgba(159,232,112,0.1);
+      --accent-on: #0e0f0c;
+    }
+
+    body.source-visa {
+      --accent: #1A1F71;
+      --accent-tint: rgba(26,31,113,0.18);
+      --accent-tint-soft: rgba(26,31,113,0.14);
+      --accent-on: #ffffff;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #0e0f0c;
@@ -27,7 +41,7 @@
     header h1 {
       font-size: 1.8rem;
       font-weight: 700;
-      color: #9fe870;
+      color: var(--accent);
     }
 
     header p {
@@ -38,7 +52,7 @@
 
     /* Source switcher */
     .source-switcher {
-      display: flex;
+      display: inline-flex;
       gap: 0;
       margin-top: 1rem;
       border-radius: 8px;
@@ -62,8 +76,8 @@
     }
 
     .source-btn.active {
-      background: #9fe870;
-      color: #0e0f0c;
+      background: var(--accent);
+      color: var(--accent-on);
     }
 
     .source-btn:not(.active):hover {
@@ -119,7 +133,7 @@
       transition: border-color 0.15s;
     }
 
-    .api-key-row input:focus { border-color: #9fe870; }
+    .api-key-row input:focus { border-color: var(--accent); }
 
     .api-key-hint {
       font-size: 0.75rem;
@@ -145,7 +159,7 @@
     }
 
     .env-label input[type="radio"] {
-      accent-color: #9fe870;
+      accent-color: var(--accent);
     }
 
     /* Rate display */
@@ -164,7 +178,7 @@
     .rate-display .rate {
       font-size: 2.8rem;
       font-weight: 700;
-      color: #9fe870;
+      color: var(--accent);
     }
 
     .rate-display .rate.error {
@@ -227,7 +241,7 @@
       transition: border-color 0.15s, color 0.15s;
     }
 
-    .secondary-btn:hover { border-color: #9fe870; color: #9fe870; }
+    .secondary-btn:hover { border-color: var(--accent); color: var(--accent); }
     .secondary-btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
     .ellipsis-btn {
@@ -247,7 +261,7 @@
       transition: border-color 0.15s, color 0.15s;
     }
 
-    .ellipsis-btn:hover { border-color: #9fe870; color: #9fe870; }
+    .ellipsis-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     .dropdown-menu {
       display: none;
@@ -308,8 +322,8 @@
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      background: #9fe870;
-      color: #0e0f0c;
+      background: var(--accent);
+      color: var(--accent-on);
       border: none;
       border-radius: 8px;
       padding: 0.6rem 1.2rem;
@@ -347,8 +361,8 @@
     .chart-tab:hover { color: #e0e0e0; }
 
     .chart-tab.active {
-      color: #9fe870;
-      border-bottom-color: #9fe870;
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
     .chart-container {
@@ -518,6 +532,16 @@
       if (!menu.contains(e.target) && e.target !== btn) closeMenu();
     });
 
+    // ── Theme helpers ─────────────────────────────────────────
+
+    function getAccentColor() {
+      return getComputedStyle(document.body).getPropertyValue("--accent").trim();
+    }
+
+    function getAccentTint() {
+      return getComputedStyle(document.body).getPropertyValue("--accent-tint-soft").trim();
+    }
+
     // ── Formatting helpers ────────────────────────────────────
 
     function parseWiseTime(timeStr) {
@@ -588,6 +612,9 @@
 
     function renderApiKeyState() {
       const src = getActiveSource();
+
+      // Theme (accent color follows source)
+      document.body.classList.toggle("source-visa", src === "visa");
 
       // Source switcher button state
       document.getElementById("btnWise").classList.toggle("active", src === "wise");
@@ -713,8 +740,8 @@
           datasets: [{
             label: datasetLabel,
             data,
-            borderColor: "#9fe870",
-            backgroundColor: "rgba(159,232,112,0.1)",
+            borderColor: getAccentColor(),
+            backgroundColor: getAccentTint(),
             fill: true,
             tension: 0.3,
             pointRadius: history.length > 60 ? 0 : 3,
@@ -853,8 +880,8 @@
           datasets: [{
             label: "USD → BRL (Intraday)",
             data,
-            borderColor: "#9fe870",
-            backgroundColor: "rgba(159,232,112,0.1)",
+            borderColor: getAccentColor(),
+            backgroundColor: getAccentTint(),
             fill: true,
             tension: 0.2,
             pointRadius: 0,
@@ -952,28 +979,19 @@
 
       const bodyStr = JSON.stringify(bodyObj);
       const token   = await buildXPayToken(apiKey, secret, path, bodyStr);
-      const url     = `${base}${path}?apikey=${encodeURIComponent(apiKey)}`;
+      const visaUrl = `${base}${path}?apikey=${encodeURIComponent(apiKey)}`;
 
-      let res;
-      try {
-        res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Pay-Token": token,
-          },
+      // Visa's API does not serve CORS headers — route through our Pages Function.
+      // Token is signed client-side, so the shared secret never leaves the browser.
+      const res = await fetch("/visa-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: visaUrl,
+          headers: { "x-pay-token": token },
           body: bodyStr,
-        });
-      } catch (networkErr) {
-        // CORS failures surface as TypeErrors with no HTTP status
-        if (networkErr instanceof TypeError) {
-          throw new Error(
-            "Network error — the Visa API does not support direct browser requests (CORS). " +
-            "A server-side proxy is required for production use."
-          );
-        }
-        throw networkErr;
-      }
+        }),
+      });
 
       if (!res.ok) {
         let errBody = {};
