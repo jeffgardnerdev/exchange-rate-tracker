@@ -384,10 +384,163 @@
       padding: 1rem;
     }
 
+    /* Simulator */
+    .sim-title {
+      font-size: 0.85rem;
+      color: #8a8a8a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .sim-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .sim-field label {
+      display: block;
+      font-size: 0.75rem;
+      color: #8a8a8a;
+      margin-bottom: 0.35rem;
+    }
+
+    .sim-input-wrap {
+      display: flex;
+      align-items: center;
+      border: 1px solid #3a3b38;
+      border-radius: 8px;
+      background: #0e0f0c;
+      transition: border-color 0.15s;
+    }
+
+    .sim-input-wrap:focus-within { border-color: var(--accent); }
+
+    .sim-input-wrap .affix {
+      padding: 0 0.1rem 0 0.8rem;
+      color: #6b6b6b;
+      font-size: 0.95rem;
+    }
+
+    .sim-input-wrap .affix.suffix { padding: 0 0.8rem 0 0.1rem; }
+
+    .sim-input-wrap input {
+      flex: 1;
+      min-width: 0;
+      padding: 0.6rem 0.8rem 0.6rem 0.4rem;
+      border: none;
+      background: none;
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+    }
+
+    .sim-rate-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.35rem;
+      font-size: 0.75rem;
+      color: #6b6b6b;
+      min-height: 1.1rem;
+    }
+
+    .sim-rate-status .dot {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: #6b6b6b;
+    }
+
+    .sim-rate-status.live .dot { background: var(--accent); }
+    .sim-rate-status.warn { color: #f5b041; }
+    .sim-rate-status.warn .dot { background: #f5b041; }
+
+    .link-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: inherit;
+      color: var(--accent);
+      cursor: pointer;
+    }
+
+    .link-btn:hover { text-decoration: underline; }
+
+    .sim-result {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      border-radius: 10px;
+      background: var(--accent-tint-soft);
+    }
+
+    .sim-result .label {
+      font-size: 0.75rem;
+      color: #8a8a8a;
+    }
+
+    .sim-result .amount {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sim-result .vet {
+      font-size: 0.85rem;
+      color: #c0c0c0;
+      margin-top: 0.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sim-result .vet .cost { color: #8a8a8a; margin-left: 0.4rem; }
+
+    .sim-details {
+      margin-top: 1rem;
+      border-top: 1px solid #2a2b28;
+      padding-top: 0.75rem;
+    }
+
+    .sim-details + .sim-details { margin-top: 0.75rem; }
+
+    .sim-details summary {
+      font-size: 0.85rem;
+      color: #8a8a8a;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sim-details summary:hover { color: #e0e0e0; }
+
+    .sim-details summary .summary-meta { color: #6b6b6b; margin-left: 0.4rem; }
+
+    .sim-fees {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+
+    .sim-breakdown {
+      width: 100%;
+      margin-top: 0.75rem;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sim-breakdown td { padding: 0.3rem 0; color: #c0c0c0; }
+    .sim-breakdown td:last-child { text-align: right; }
+    .sim-breakdown tr.total td { border-top: 1px solid #3a3b38; padding-top: 0.5rem; font-weight: 600; color: #e0e0e0; }
+
     .hidden { display: none !important; }
 
     @media (max-width: 500px) {
       .rate-display .rate { font-size: 2rem; }
+      .sim-inputs, .sim-fees { grid-template-columns: 1fr; }
+      .sim-result .amount { font-size: 1.8rem; }
       .backfill-section { flex-direction: column; align-items: stretch; text-align: center; }
       .api-key-row { flex-direction: column; }
     }
@@ -452,6 +605,67 @@
     </div>
   </div>
 
+  <!-- Simulator Card -->
+  <div class="card hidden" id="simCard">
+    <div class="sim-title">Simulator</div>
+    <div class="sim-inputs">
+      <div class="sim-field">
+        <label for="simUsd">You send</label>
+        <div class="sim-input-wrap">
+          <span class="affix">US$</span>
+          <input type="text" inputmode="decimal" id="simUsd" autocomplete="off">
+        </div>
+      </div>
+      <div class="sim-field">
+        <label for="simRate">Rate (cotação)</label>
+        <div class="sim-input-wrap">
+          <input type="text" inputmode="decimal" id="simRate" autocomplete="off">
+        </div>
+        <div class="sim-rate-status" id="simRateStatus">
+          <span class="dot"></span>
+          <span id="simRateStatusText"></span>
+          <button class="link-btn hidden" id="simUseLiveBtn" onclick="useLiveSimRate()">↺ use live rate</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sim-result">
+      <div class="label">You receive</div>
+      <div class="amount" id="simReceived">—</div>
+      <div class="vet">VET <span id="simVet">—</span><span class="cost" id="simCost"></span></div>
+    </div>
+
+    <details class="sim-details">
+      <summary>Fees <span class="summary-meta" id="simFeesSummary"></span></summary>
+      <div class="sim-fees">
+        <div class="sim-field">
+          <label for="simIof">IOF</label>
+          <div class="sim-input-wrap">
+            <input type="text" inputmode="decimal" id="simIof" autocomplete="off">
+            <span class="affix suffix">%</span>
+          </div>
+        </div>
+        <div class="sim-field">
+          <label for="simSpread">Spread</label>
+          <div class="sim-input-wrap">
+            <input type="text" inputmode="decimal" id="simSpread" autocomplete="off">
+            <span class="affix suffix">%</span>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="sim-details">
+      <summary>Breakdown</summary>
+      <table class="sim-breakdown">
+        <tr><td>Value (BRL)</td><td id="simBrl">—</td></tr>
+        <tr><td>− Spread</td><td id="simSpreadAmt">—</td></tr>
+        <tr><td>− IOF</td><td id="simIofAmt">—</td></tr>
+        <tr class="total"><td>= You receive</td><td id="simReceivedRow">—</td></tr>
+      </table>
+    </details>
+  </div>
+
   <!-- Backfill Card (Wise only) -->
   <div class="card backfill-section hidden" id="backfillSection">
     <span class="hint">Fetch ~180 days of daily mid-market rates from Wise</span>
@@ -483,6 +697,7 @@
     const VISA_API_KEY        = "visaApiKey";
     const VISA_SECRET_KEY     = "visaSharedSecret";
     const VISA_ENV_KEY        = "visaEnv";
+    const SIM_KEY             = "fxSimulator";
 
     const WISE_API  = "https://api.wise.com";
     const REFRESH_MS = 60_000;
@@ -511,6 +726,10 @@
       if (intradayChart) { intradayChart.destroy(); intradayChart = null; }
       intradayData = new Map();
       lastLiveRate = null;
+      if (!simRateManual) {
+        document.getElementById("simRate").value = "";
+        updateSimulator();
+      }
       stopAutoRefresh();
       renderApiKeyState();
       const hasKey = src === "wise" ? !!getWiseApiKey() : hasVisaCredentials();
@@ -645,6 +864,8 @@
       document.getElementById("apiKeyCard").classList.toggle("hidden", hasKey);
       document.getElementById("rateCard").classList.toggle("hidden", !hasKey);
       document.getElementById("chartCard").classList.toggle("hidden", !hasKey);
+      document.getElementById("simCard").classList.toggle("hidden", !hasKey);
+      renderSimRateStatus();
 
       // Intraday tab visible for Wise only
       document.getElementById("tabIntraday").classList.toggle("hidden", src !== "wise");
@@ -1018,6 +1239,7 @@
       el.textContent = `1 USD = ${rate.toFixed(4)} BRL`;
       el.classList.remove("error");
       document.getElementById("lastUpdated").textContent = updatedText;
+      setSimLiveRate(rate);
     }
 
     async function fetchCurrentRate() {
@@ -1217,6 +1439,137 @@
       if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     }
 
+    // ── Simulator ─────────────────────────────────────────────
+    // Mirrors the "Simulador USD / BRL" spreadsheet exactly, including
+    // IOF being charged on (BRL − spread) while spread is on gross BRL.
+
+    const SIM_DEFAULTS = { usd: "1,000.00", iof: "0.38", spread: "1.25" };
+    let simRateManual = false;
+
+    // Sheets ROUND(x, 2); toPrecision strips float noise (e.g. 1.005 → 1.01)
+    function round2(x) {
+      return Math.round(Number((x * 100).toPrecision(12))) / 100;
+    }
+
+    function simulate({ usd, rate, iofPct, spreadPct }) {
+      const brl      = round2(usd * rate);
+      const spread   = round2(brl * spreadPct / 100);
+      const iof      = round2((brl - spread) * iofPct / 100);
+      const received = round2(brl - iof - spread);
+      const vet      = usd === 0 ? null : received / usd;
+      return { brl, spread, iof, received, vet };
+    }
+
+    function parseNum(str) {
+      const s = String(str).replace(/,/g, "").trim();
+      return s === "" ? NaN : Number(s);
+    }
+
+    const fmtBRL = new Intl.NumberFormat("en-US", { style: "currency", currency: "BRL" });
+
+    function isSyntheticRate() {
+      return getActiveSource() === "visa" && getVisaEnv() === "sandbox";
+    }
+
+    function loadSimState() {
+      try {
+        return { ...SIM_DEFAULTS, ...JSON.parse(localStorage.getItem(SIM_KEY)) };
+      } catch {
+        return { ...SIM_DEFAULTS };
+      }
+    }
+
+    function saveSimState() {
+      localStorage.setItem(SIM_KEY, JSON.stringify({
+        usd:    document.getElementById("simUsd").value,
+        iof:    document.getElementById("simIof").value,
+        spread: document.getElementById("simSpread").value,
+      }));
+    }
+
+    function setSimLiveRate(rate) {
+      if (!simRateManual && !isSyntheticRate()) {
+        document.getElementById("simRate").value = String(rate);
+      }
+      renderSimRateStatus();
+      updateSimulator();
+    }
+
+    function useLiveSimRate() {
+      simRateManual = false;
+      document.getElementById("simRate").value = lastLiveRate !== null ? String(lastLiveRate) : "";
+      renderSimRateStatus();
+      updateSimulator();
+    }
+
+    function renderSimRateStatus() {
+      const statusEl = document.getElementById("simRateStatus");
+      const textEl   = document.getElementById("simRateStatusText");
+      const liveBtn  = document.getElementById("simUseLiveBtn");
+      const source   = getActiveSource() === "wise" ? "Wise" : "Visa";
+      let text, state = "";
+
+      if (simRateManual) {
+        text = "manual";
+      } else if (isSyntheticRate()) {
+        text  = "Visa sandbox rates are synthetic — enter a rate";
+        state = "warn";
+      } else if (lastLiveRate === null) {
+        text = "waiting for live rate…";
+      } else {
+        text  = `live · ${source}`;
+        state = "live";
+      }
+
+      statusEl.className = `sim-rate-status ${state}`;
+      textEl.textContent = text;
+      liveBtn.classList.toggle("hidden", !(simRateManual && lastLiveRate !== null && !isSyntheticRate()));
+    }
+
+    function updateSimulator() {
+      const usd       = parseNum(document.getElementById("simUsd").value);
+      const rate      = parseNum(document.getElementById("simRate").value);
+      const iofPct    = parseNum(document.getElementById("simIof").value);
+      const spreadPct = parseNum(document.getElementById("simSpread").value);
+
+      document.getElementById("simFeesSummary").textContent =
+        `IOF ${isNaN(iofPct) ? "—" : iofPct + "%"} · Spread ${isNaN(spreadPct) ? "—" : spreadPct + "%"}`;
+
+      const ids = ["simReceived", "simReceivedRow", "simBrl", "simSpreadAmt", "simIofAmt", "simVet"];
+      if ([usd, rate, iofPct, spreadPct].some(isNaN)) {
+        ids.forEach(id => { document.getElementById(id).textContent = "—"; });
+        document.getElementById("simCost").textContent = "";
+        return;
+      }
+
+      const r = simulate({ usd, rate, iofPct, spreadPct });
+      document.getElementById("simReceived").textContent    = fmtBRL.format(r.received);
+      document.getElementById("simReceivedRow").textContent = fmtBRL.format(r.received);
+      document.getElementById("simBrl").textContent         = fmtBRL.format(r.brl);
+      document.getElementById("simSpreadAmt").textContent   = fmtBRL.format(r.spread);
+      document.getElementById("simIofAmt").textContent      = fmtBRL.format(r.iof);
+      document.getElementById("simVet").textContent         = r.vet === null ? "—" : r.vet.toFixed(6);
+      document.getElementById("simCost").textContent =
+        r.vet === null || rate === 0 ? "" : `(${((r.vet / rate - 1) * 100).toFixed(2)}% vs rate)`;
+    }
+
+    function initSimulator() {
+      const state = loadSimState();
+      document.getElementById("simUsd").value    = state.usd;
+      document.getElementById("simIof").value    = state.iof;
+      document.getElementById("simSpread").value = state.spread;
+
+      ["simUsd", "simIof", "simSpread"].forEach(id => {
+        document.getElementById(id).addEventListener("input", () => { saveSimState(); updateSimulator(); });
+      });
+      document.getElementById("simRate").addEventListener("input", () => {
+        simRateManual = true;
+        renderSimRateStatus();
+        updateSimulator();
+      });
+      updateSimulator();
+    }
+
     // ── Init ──────────────────────────────────────────────────
 
     function initApp() {
@@ -1231,6 +1584,7 @@
       if (e.key === "Enter") saveApiKey();
     });
 
+    initSimulator();
     renderApiKeyState();
     const src = getActiveSource();
     if ((src === "wise" && getWiseApiKey()) || (src === "visa" && hasVisaCredentials())) {
