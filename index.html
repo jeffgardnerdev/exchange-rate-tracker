@@ -386,12 +386,35 @@
 
     /* Simulator */
     .sim-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       font-size: 0.85rem;
       color: #8a8a8a;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-bottom: 1rem;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
     }
+
+    .sim-title::-webkit-details-marker { display: none; }
+    .sim-title:hover { color: #e0e0e0; }
+
+    .sim-title::before {
+      content: "";
+      flex: none;
+      width: 1.25rem;
+      height: 1.25rem;
+      background: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+              mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+      transition: transform 0.15s;
+    }
+
+    .sim-card[open] > .sim-title::before { transform: rotate(90deg); }
+
+    .sim-body { margin-top: 1rem; }
 
     .sim-inputs {
       display: grid;
@@ -605,67 +628,6 @@
     </div>
   </div>
 
-  <!-- Simulator Card -->
-  <div class="card hidden" id="simCard">
-    <div class="sim-title">Simulator</div>
-    <div class="sim-inputs">
-      <div class="sim-field">
-        <label for="simUsd">You send</label>
-        <div class="sim-input-wrap">
-          <span class="affix">US$</span>
-          <input type="text" inputmode="decimal" id="simUsd" autocomplete="off">
-        </div>
-      </div>
-      <div class="sim-field">
-        <label for="simRate">Rate (cotação)</label>
-        <div class="sim-input-wrap">
-          <input type="text" inputmode="decimal" id="simRate" autocomplete="off">
-        </div>
-        <div class="sim-rate-status" id="simRateStatus">
-          <span class="dot"></span>
-          <span id="simRateStatusText"></span>
-          <button class="link-btn hidden" id="simUseLiveBtn" onclick="useLiveSimRate()">↺ use live rate</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="sim-result">
-      <div class="label">You receive</div>
-      <div class="amount" id="simReceived">—</div>
-      <div class="vet">VET <span id="simVet">—</span><span class="cost" id="simCost"></span></div>
-    </div>
-
-    <details class="sim-details">
-      <summary>Fees <span class="summary-meta" id="simFeesSummary"></span></summary>
-      <div class="sim-fees">
-        <div class="sim-field">
-          <label for="simIof">IOF</label>
-          <div class="sim-input-wrap">
-            <input type="text" inputmode="decimal" id="simIof" autocomplete="off">
-            <span class="affix suffix">%</span>
-          </div>
-        </div>
-        <div class="sim-field">
-          <label for="simSpread">Spread</label>
-          <div class="sim-input-wrap">
-            <input type="text" inputmode="decimal" id="simSpread" autocomplete="off">
-            <span class="affix suffix">%</span>
-          </div>
-        </div>
-      </div>
-    </details>
-
-    <details class="sim-details">
-      <summary>Breakdown</summary>
-      <table class="sim-breakdown">
-        <tr><td>Value (BRL)</td><td id="simBrl">—</td></tr>
-        <tr><td>− Spread</td><td id="simSpreadAmt">—</td></tr>
-        <tr><td>− IOF</td><td id="simIofAmt">—</td></tr>
-        <tr class="total"><td>= You receive</td><td id="simReceivedRow">—</td></tr>
-      </table>
-    </details>
-  </div>
-
   <!-- Backfill Card (Wise only) -->
   <div class="card backfill-section hidden" id="backfillSection">
     <span class="hint">Fetch ~180 days of daily mid-market rates from Wise</span>
@@ -687,6 +649,69 @@
       <div class="empty-state" id="intradayEmpty">Loading intraday data…</div>
     </div>
   </div>
+
+  <!-- Simulator Card -->
+  <details class="card sim-card hidden" id="simCard">
+    <summary class="sim-title">Simulator</summary>
+    <div class="sim-body">
+      <div class="sim-inputs">
+        <div class="sim-field">
+          <label for="simUsd">You send</label>
+          <div class="sim-input-wrap">
+            <span class="affix">US$</span>
+            <input type="text" inputmode="decimal" id="simUsd" autocomplete="off">
+          </div>
+        </div>
+        <div class="sim-field">
+          <label for="simRate">Rate (cotação)</label>
+          <div class="sim-input-wrap">
+            <input type="text" inputmode="decimal" id="simRate" autocomplete="off">
+          </div>
+          <div class="sim-rate-status" id="simRateStatus">
+            <span class="dot"></span>
+            <span id="simRateStatusText"></span>
+            <button class="link-btn hidden" id="simUseLiveBtn" onclick="useLiveSimRate()">↺ use live rate</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sim-result">
+        <div class="label">You receive</div>
+        <div class="amount" id="simReceived">—</div>
+        <div class="vet">VET <span id="simVet">—</span><span class="cost" id="simCost"></span></div>
+      </div>
+
+      <details class="sim-details">
+        <summary>Fees <span class="summary-meta" id="simFeesSummary"></span></summary>
+        <div class="sim-fees">
+          <div class="sim-field">
+            <label for="simIof">IOF</label>
+            <div class="sim-input-wrap">
+              <input type="text" inputmode="decimal" id="simIof" autocomplete="off">
+              <span class="affix suffix">%</span>
+            </div>
+          </div>
+          <div class="sim-field">
+            <label for="simSpread">Spread</label>
+            <div class="sim-input-wrap">
+              <input type="text" inputmode="decimal" id="simSpread" autocomplete="off">
+              <span class="affix suffix">%</span>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="sim-details">
+        <summary>Breakdown</summary>
+        <table class="sim-breakdown">
+          <tr><td>Value (BRL)</td><td id="simBrl">—</td></tr>
+          <tr><td>− Spread</td><td id="simSpreadAmt">—</td></tr>
+          <tr><td>− IOF</td><td id="simIofAmt">—</td></tr>
+          <tr class="total"><td>= You receive</td><td id="simReceivedRow">—</td></tr>
+        </table>
+      </details>
+    </div>
+  </details>
 
   <script>
     // ── Storage keys ───────────────────────────────────────────
@@ -916,6 +941,7 @@
     // ── Daily Chart ───────────────────────────────────────────
 
     let dailyChart = null;
+    let dailyHistory = [];
 
     function renderDailyChart() {
       const src = getActiveSource();
@@ -946,6 +972,7 @@
         return isNaN(d) ? h.date : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       });
       const data = history.map(h => h.rate);
+      dailyHistory = history;
 
       if (dailyChart) {
         dailyChart.data.labels = labels;
@@ -979,7 +1006,7 @@
             legend: { display: false },
             tooltip: {
               callbacks: {
-                title: (items) => history[items[0].dataIndex]?.date ?? "",
+                title: (items) => dailyHistory[items[0].dataIndex]?.date ?? "",
                 label: (item) => `1 USD = ${item.parsed.y.toFixed(4)} BRL`
               }
             }
@@ -1471,6 +1498,8 @@
       return getActiveSource() === "visa" && getVisaEnv() === "sandbox";
     }
 
+    const simCardEl = document.getElementById("simCard");
+
     function loadSimState() {
       try {
         return { ...SIM_DEFAULTS, ...JSON.parse(localStorage.getItem(SIM_KEY)) };
@@ -1484,6 +1513,7 @@
         usd:    document.getElementById("simUsd").value,
         iof:    document.getElementById("simIof").value,
         spread: document.getElementById("simSpread").value,
+        open:   simCardEl.open,
       }));
     }
 
@@ -1562,6 +1592,8 @@
       ["simUsd", "simIof", "simSpread"].forEach(id => {
         document.getElementById(id).addEventListener("input", () => { saveSimState(); updateSimulator(); });
       });
+      simCardEl.open = !!state.open;
+      simCardEl.addEventListener("toggle", saveSimState);
       document.getElementById("simRate").addEventListener("input", () => {
         simRateManual = true;
         renderSimRateStatus();
